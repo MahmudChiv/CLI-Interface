@@ -7,13 +7,13 @@ exports.config = void 0;
 const conf_1 = __importDefault(require("conf"));
 const store = new conf_1.default({ projectName: "insighta", configName: "credentials" });
 exports.config = {
-    getToken: () => store.get("access_token"),
-    setToken: (token) => store.set("access_token", token),
-    getRefreshToken: () => store.get("refresh_token"),
-    setRefreshToken: (token) => store.set("refresh_token", token),
+    getToken: () => store.get("accessToken"),
+    setToken: (token) => store.set("accessToken", token),
+    getRefreshToken: () => store.get("refreshToken"),
+    setRefreshToken: (token) => store.set("refreshToken", token),
     clearToken: () => {
-        store.delete("access_token");
-        store.delete("refresh_token");
+        store.delete("accessToken");
+        store.delete("refreshToken");
     },
     // User info (we cache this after login for whoami)
     getUser: () => store.get("user"),
@@ -21,7 +21,8 @@ exports.config = {
     clearUser: () => store.delete("user"),
     getClientId: () => store.get("clientId") || process.env.INSIGHTA_CLIENT_ID || "",
     setClientId: (id) => store.set("clientId", id),
-    getBaseUrl: () => store.get("baseUrl") || "http://localhost:4000",
+    getBaseUrl: () => store.get("baseUrl") ||
+        "https://hng14-stage-1-production.up.railway.app",
     setBaseUrl: (url) => store.set("baseUrl", url),
     clearAll: () => store.clear(),
 };

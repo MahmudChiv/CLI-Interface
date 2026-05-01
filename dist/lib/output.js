@@ -25,7 +25,7 @@ exports.output = {
             `${response.total} total results  ·  ` +
             `${response.limit} per page`));
         if (response.links.next) {
-            console.log(chalk_1.default.dim(`  Next: add --page ${response.page + 1} to see more`));
+            console.log(chalk_1.default.dim(`  Next: add --page ${response.page + 1} --limit ${response.limit} to see more`));
         }
         console.log("");
     },

@@ -32,7 +32,7 @@ export const output = {
 
     if (response.links.next) {
       console.log(
-        chalk.dim(`  Next: add --page ${response.page + 1} to see more`),
+        chalk.dim(`  Next: add --page ${response.page + 1} --limit ${response.limit} to see more`),
       );
     }
 

@@ -92,9 +92,9 @@ function registerLoginCommand(program) {
                 code_verifier: codeVerifier,
                 port,
             });
-            const { access_token, refresh_token, user } = response.data;
-            config_1.config.setToken(access_token);
-            config_1.config.setRefreshToken(refresh_token);
+            const { accessToken, refreshToken, user } = response.data;
+            config_1.config.setToken(accessToken);
+            config_1.config.setRefreshToken(refreshToken);
             config_1.config.setUser(user);
             spinner.succeed("Logged in successfully!");
             output_1.output.success(`Logged in as @${user.username} (${user.role})`);
