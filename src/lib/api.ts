@@ -6,13 +6,8 @@ import axios, {
 import { config } from "./config";
 import { output } from "./output";
 
-// We track whether a refresh is already in progress.
-// This prevents a race condition where multiple requests fail at the
-// same time and all try to refresh simultaneously — only one should win.
 let isRefreshing = false;
 
-// While a refresh is in progress, any other failed requests queue up here.
-// Once the refresh succeeds, they all retry with the new token.
 let failedQueue: Array<{
   resolve: (token: string) => void;
   reject: (err: unknown) => void;
@@ -36,7 +31,6 @@ function createClient(): AxiosInstance {
   });
 
   // REQUEST INTERCEPTOR
-  // Runs before every outgoing request
   client.interceptors.request.use(
     (requestConfig: InternalAxiosRequestConfig) => {
       const token = config.getToken();
@@ -47,8 +41,6 @@ function createClient(): AxiosInstance {
       const user = config.getUser();
       if (!user?.is_active) output.error("Forbidden");
 
-      // TRD requirement: all /api/profiles/* requests need this header
-      // We add it globally here so no command ever forgets it
       requestConfig.headers["x-api-version"] = "1";
 
       console.log("INTERCEPTOR URL:", requestConfig.url);
@@ -59,7 +51,6 @@ function createClient(): AxiosInstance {
   );
 
   // RESPONSE INTERCEPTOR
-  // Runs after every response comes back
   client.interceptors.response.use(
     // Success — just pass through
     (response) => response,
@@ -98,27 +89,39 @@ function createClient(): AxiosInstance {
         originalRequest._retry = true;
         isRefreshing = true;
 
+        console.log("401 received, attempting refresh...");
+        console.log("Refresh token exists:", !!refreshToken);
+        console.log(
+          "Refresh token value:",
+          refreshToken?.substring(0, 20) + "...",
+        );
+
         try {
           // Call the backend's refresh endpoint
-          // TRD: POST /auth/refresh with { refresh_token }
-          // Response: { status, access_token, refresh_token }
+          console.log("Calling refresh endpoint...");
           const response = await axios.post(
-            `${config.getBaseUrl()}/api/auth/refresh`,
-            { refresh_token: refreshToken },
+            `${config.getBaseUrl()}/auth/refresh`,
+            { refreshToken },
+            {
+              timeout: 10000,
+              headers: { "Content-Type": "application/json" },
+            },
           );
 
-          const { access_token, refresh_token: newRefreshToken } =
+          console.log("Refresh response:", response.data);
+
+          const { accessToken, refreshToken: newRefreshToken } =
             response.data;
 
           // Save the new tokens
-          config.setToken(access_token);
+          config.setToken(accessToken);
           config.setRefreshToken(newRefreshToken);
 
           // Update the header on the original failed request
-          originalRequest.headers["Authorization"] = `Bearer ${access_token}`;
+          originalRequest.headers["Authorization"] = `Bearer ${accessToken}`;
 
           // Let all the queued requests proceed with the new token
-          processQueue(null, access_token);
+          processQueue(null, accessToken);
 
           // Retry the original request
           return client(originalRequest);
@@ -189,7 +192,7 @@ export interface ProfileFilters {
 export const api = {
   // Auth
   refresh: (refreshToken: string) =>
-    apiClient.post("/auth/refresh", { refresh_token: refreshToken }),
+    apiClient.post("/auth/refresh", { refreshToken }),
 
   logout: () => apiClient.post("/auth/logout"),
 
@@ -217,6 +220,6 @@ export const api = {
   exportProfiles: (filters: ProfileFilters = {}) =>
     apiClient.get("/api/profiles/export", {
       params: { format: "csv", ...filters },
-      responseType: "text", // Important — tells axios not to parse as JSON
+      responseType: "text",
     }),
 };
