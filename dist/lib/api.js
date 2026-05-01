@@ -7,12 +7,7 @@ exports.api = exports.apiClient = void 0;
 const axios_1 = __importDefault(require("axios"));
 const config_1 = require("./config");
 const output_1 = require("./output");
-// We track whether a refresh is already in progress.
-// This prevents a race condition where multiple requests fail at the
-// same time and all try to refresh simultaneously — only one should win.
 let isRefreshing = false;
-// While a refresh is in progress, any other failed requests queue up here.
-// Once the refresh succeeds, they all retry with the new token.
 let failedQueue = [];
 function processQueue(error, token) {
     failedQueue.forEach((prom) => {
@@ -31,7 +26,6 @@ function createClient() {
         timeout: 15000,
     });
     // REQUEST INTERCEPTOR
-    // Runs before every outgoing request
     client.interceptors.request.use((requestConfig) => {
         const token = config_1.config.getToken();
         if (token) {
@@ -40,15 +34,12 @@ function createClient() {
         const user = config_1.config.getUser();
         if (!user?.is_active)
             output_1.output.error("Forbidden");
-        // TRD requirement: all /api/profiles/* requests need this header
-        // We add it globally here so no command ever forgets it
         requestConfig.headers["x-api-version"] = "1";
         console.log("INTERCEPTOR URL:", requestConfig.url);
         console.log("INTERCEPTOR HEADERS:", requestConfig.headers);
         return requestConfig;
     });
     // RESPONSE INTERCEPTOR
-    // Runs after every response comes back
     client.interceptors.response.use(
     // Success — just pass through
     (response) => response, 
@@ -79,19 +70,25 @@ function createClient() {
             // We're the first request to fail — we lead the refresh
             originalRequest._retry = true;
             isRefreshing = true;
+            console.log("401 received, attempting refresh...");
+            console.log("Refresh token exists:", !!refreshToken);
+            console.log("Refresh token value:", refreshToken?.substring(0, 20) + "...");
             try {
                 // Call the backend's refresh endpoint
-                // TRD: POST /auth/refresh with { refresh_token }
-                // Response: { status, access_token, refresh_token }
-                const response = await axios_1.default.post(`${config_1.config.getBaseUrl()}/api/auth/refresh`, { refresh_token: refreshToken });
-                const { access_token, refresh_token: newRefreshToken } = response.data;
+                console.log("Calling refresh endpoint...");
+                const response = await axios_1.default.post(`${config_1.config.getBaseUrl()}/auth/refresh`, { refreshToken }, {
+                    timeout: 10000,
+                    headers: { "Content-Type": "application/json" },
+                });
+                console.log("Refresh response:", response.data);
+                const { accessToken, refreshToken: newRefreshToken } = response.data;
                 // Save the new tokens
-                config_1.config.setToken(access_token);
+                config_1.config.setToken(accessToken);
                 config_1.config.setRefreshToken(newRefreshToken);
                 // Update the header on the original failed request
-                originalRequest.headers["Authorization"] = `Bearer ${access_token}`;
+                originalRequest.headers["Authorization"] = `Bearer ${accessToken}`;
                 // Let all the queued requests proceed with the new token
-                processQueue(null, access_token);
+                processQueue(null, accessToken);
                 // Retry the original request
                 return client(originalRequest);
             }
@@ -114,7 +111,7 @@ function createClient() {
 exports.apiClient = createClient();
 exports.api = {
     // Auth
-    refresh: (refreshToken) => exports.apiClient.post("/auth/refresh", { refresh_token: refreshToken }),
+    refresh: (refreshToken) => exports.apiClient.post("/auth/refresh", { refreshToken }),
     logout: () => exports.apiClient.post("/auth/logout"),
     // Profiles
     listProfiles: (filters = {}) => exports.apiClient.get("/api/profiles", {
@@ -127,6 +124,6 @@ exports.api = {
     createProfile: (name) => exports.apiClient.post("/api/profiles", { name }, { timeout: 60000 }),
     exportProfiles: (filters = {}) => exports.apiClient.get("/api/profiles/export", {
         params: { format: "csv", ...filters },
-        responseType: "text", // Important — tells axios not to parse as JSON
+        responseType: "text",
     }),
 };

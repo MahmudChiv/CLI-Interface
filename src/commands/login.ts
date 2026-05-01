@@ -118,10 +118,10 @@ export function registerLoginCommand(program: Command) {
           port,
         });
 
-        const { access_token, refresh_token, user } = response.data;
+        const { accessToken, refreshToken, user } = response.data;
 
-        config.setToken(access_token);
-        config.setRefreshToken(refresh_token);
+        config.setToken(accessToken);
+        config.setRefreshToken(refreshToken);
         config.setUser(user);
 
         spinner.succeed("Logged in successfully!");

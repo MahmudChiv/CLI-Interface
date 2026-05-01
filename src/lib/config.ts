@@ -4,16 +4,16 @@ const store = new Conf({ projectName: "insighta", configName: "credentials" });
 
 export const config = {
   getToken: (): string | undefined =>
-    store.get("access_token") as string | undefined,
-  setToken: (token: string) => store.set("access_token", token),
+    store.get("accessToken") as string | undefined,
+  setToken: (token: string) => store.set("accessToken", token),
 
   getRefreshToken: (): string | undefined =>
-    store.get("refresh_token") as string | undefined,
-  setRefreshToken: (token: string) => store.set("refresh_token", token),
+    store.get("refreshToken") as string | undefined,
+  setRefreshToken: (token: string) => store.set("refreshToken", token),
 
   clearToken: () => {
-    store.delete("access_token");
-    store.delete("refresh_token");
+    store.delete("accessToken");
+    store.delete("refreshToken");
   },
 
   // User info (we cache this after login for whoami)
@@ -34,7 +34,8 @@ export const config = {
   setClientId: (id: string) => store.set("clientId", id),
 
   getBaseUrl: (): string =>
-    (store.get("baseUrl") as string) || "http://localhost:4000",
+    (store.get("baseUrl") as string) ||
+    "https://hng14-stage-1-production.up.railway.app",
   setBaseUrl: (url: string) => store.set("baseUrl", url),
 
   clearAll: () => store.clear(),
